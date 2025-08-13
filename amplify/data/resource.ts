@@ -1,17 +1,126 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { auth } from '../auth/resource';
+import { syncGithubData } from '../functions/sync-github-data/resource';
 
-/*== STEP 1 ===============================================================
-The section below creates a Todo database table with a "content" field. Try
-adding a new "isDone" field as a boolean. The authorization rule below
-specifies that any unauthenticated user can "create", "read", "update", 
-and "delete" any "Todo" records.
-=========================================================================*/
 const schema = a.schema({
-  Todo: a
+  User: a
     .model({
-      content: a.string(),
+      email: a.string().required(),
+      githubUsername: a.string(),
+      githubId: a.string(),
+      githubAccessToken: a.string(),
+      githubAvatarUrl: a.string(),
+      displayName: a.string(),
+      repositories: a.hasMany('Repository', 'userId'),
+      pullRequests: a.hasMany('PullRequest', 'userId'),
+      activities: a.hasMany('Activity', 'userId'),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [
+      allow.ownerDefinedIn('email'),
+      allow.groups(['ADMINS']),
+    ]),
+
+  Repository: a
+    .model({
+      userId: a.id().required(),
+      user: a.belongsTo('User', 'userId'),
+      githubId: a.string().required(),
+      name: a.string().required(),
+      fullName: a.string().required(),
+      description: a.string(),
+      isPrivate: a.boolean().required(),
+      defaultBranch: a.string(),
+      language: a.string(),
+      stargazersCount: a.integer(),
+      forksCount: a.integer(),
+      openIssuesCount: a.integer(),
+      lastSyncedAt: a.datetime(),
+      pullRequests: a.hasMany('PullRequest', 'repositoryId'),
+      builds: a.hasMany('Build', 'repositoryId'),
+      activities: a.hasMany('Activity', 'repositoryId'),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ]),
+
+  PullRequest: a
+    .model({
+      userId: a.id().required(),
+      user: a.belongsTo('User', 'userId'),
+      repositoryId: a.id().required(),
+      repository: a.belongsTo('Repository', 'repositoryId'),
+      githubId: a.integer().required(),
+      number: a.integer().required(),
+      title: a.string().required(),
+      state: a.string().required(),
+      draft: a.boolean(),
+      authorUsername: a.string().required(),
+      authorAvatarUrl: a.string(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required(),
+      closedAt: a.datetime(),
+      mergedAt: a.datetime(),
+      headRef: a.string().required(),
+      baseRef: a.string().required(),
+      reviewStatus: a.string(),
+      labels: a.string().array(),
+      assignees: a.string().array(),
+      activities: a.hasMany('Activity', 'pullRequestId'),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ]),
+
+  Build: a
+    .model({
+      repositoryId: a.id().required(),
+      repository: a.belongsTo('Repository', 'repositoryId'),
+      commitSha: a.string().required(),
+      branch: a.string().required(),
+      status: a.string().required(),
+      conclusion: a.string(),
+      startedAt: a.datetime(),
+      completedAt: a.datetime(),
+      duration: a.integer(),
+      url: a.string(),
+      author: a.string(),
+      message: a.string(),
+    })
+    .authorization((allow) => [
+      allow.authenticated(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ]),
+
+  Activity: a
+    .model({
+      userId: a.id().required(),
+      user: a.belongsTo('User', 'userId'),
+      pullRequestId: a.id(),
+      pullRequest: a.belongsTo('PullRequest', 'pullRequestId'),
+      repositoryId: a.id(),
+      repository: a.belongsTo('Repository', 'repositoryId'),
+      type: a.string().required(),
+      title: a.string().required(),
+      description: a.string(),
+      metadata: a.json(),
+      createdAt: a.datetime().required(),
+    })
+    .authorization((allow) => [
+      allow.authenticated(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ]),
+
+  syncGitHubData: a
+    .mutation()
+    .arguments({
+      userId: a.string().required(),
+      githubToken: a.string().required(),
+    })
+    .returns(a.json())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(syncGithubData)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
@@ -19,35 +128,9 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'identityPool',
+    defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+    },
   },
 });
-
-/*== STEP 2 ===============================================================
-Go to your frontend source code. From your client-side code, generate a
-Data client to make CRUDL requests to your table. (THIS SNIPPET WILL ONLY
-WORK IN THE FRONTEND CODE FILE.)
-
-Using JavaScript or Next.js React Server Components, Middleware, Server 
-Actions or Pages Router? Review how to generate Data clients for those use
-cases: https://docs.amplify.aws/gen2/build-a-backend/data/connect-to-API/
-=========================================================================*/
-
-/*
-"use client"
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
-
-const client = generateClient<Schema>() // use this Data client for CRUDL requests
-*/
-
-/*== STEP 3 ===============================================================
-Fetch records from the database and use them in your frontend component.
-(THIS SNIPPET WILL ONLY WORK IN THE FRONTEND CODE FILE.)
-=========================================================================*/
-
-/* For example, in a React component, you can use this snippet in your
-  function's RETURN statement */
-// const { data: todos } = await client.models.Todo.list()
-
-// return <ul>{todos.map(todo => <li key={todo.id}>{todo.content}</li>)}</ul>

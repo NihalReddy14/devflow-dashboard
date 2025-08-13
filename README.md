@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DevFlow Dashboard - Real-Time Collaboration App
 
-## Getting Started
+A modern development dashboard that integrates with GitHub to provide real-time updates on pull requests, builds, and team activity. Built with Next.js, AWS Amplify Gen 2, and TypeScript.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+✅ **GitHub Integration**
+- OAuth authentication with GitHub
+- Sync repositories and pull requests
+- Real-time PR status updates
+
+✅ **Real-Time Updates**
+- Live updates using AWS AppSync subscriptions
+- Activity feed with instant notifications
+- Real-time connection indicator
+
+✅ **Modern UI**
+- Responsive dashboard with tabbed interface
+- Dark mode support
+- Reusable component library
+- Empty states with actionable CTAs
+
+✅ **AWS Amplify Backend**
+- GraphQL API with DynamoDB
+- Cognito authentication
+- Lambda functions for GitHub sync
+- Optimized for AWS Free Tier
+
+## Project Structure
+
+```
+/app
+  /components
+    /ui              - Reusable UI components (Button, Card, Badge, etc.)
+    /dashboard       - Dashboard-specific components
+    /auth           - Authentication components
+  /api/auth/github  - GitHub OAuth routes
+  /dashboard        - Main dashboard pages
+  /hooks           - Custom React hooks
+/amplify
+  /auth            - Cognito configuration
+  /data            - GraphQL schema and data models
+  /functions       - Lambda functions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup Instructions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Prerequisites
+- Node.js 18+
+- AWS Account (free tier eligible)
+- GitHub Account
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Clone and Install
+```bash
+git clone [repository-url]
+cd real-time-collaboration-app
+npm install
+```
 
-## Learn More
+### 3. Configure GitHub OAuth
+1. Go to https://github.com/settings/applications/new
+2. Create a new OAuth App with:
+   - Homepage URL: `http://localhost:3000`
+   - Authorization callback URL: `http://localhost:3000/api/auth/github/callback`
+3. Copy the Client ID and Client Secret
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Set Environment Variables
+```bash
+cp .env.local.example .env.local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Edit `.env.local` and add your GitHub credentials:
+```
+NEXT_PUBLIC_GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 5. Deploy Amplify Backend
+```bash
+# Install Amplify CLI
+npm install -g @aws-amplify/cli@latest
 
-## Deploy on Vercel
+# Configure AWS credentials
+amplify configure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Deploy backend
+npx ampx sandbox
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Set secrets
+npx ampx sandbox secret set GITHUB_CLIENT_ID
+npx ampx sandbox secret set GITHUB_CLIENT_SECRET
+```
+
+### 6. Run Development Server
+```bash
+npm run dev
+```
+
+Visit http://localhost:3000
+
+## Data Models
+
+- **User**: GitHub user information and access tokens
+- **Repository**: Synced GitHub repositories
+- **PullRequest**: PR details with real-time updates
+- **Build**: CI/CD build status
+- **Activity**: Event feed items
+
+## Cost Optimization
+
+The app is designed to stay within AWS Free Tier limits:
+
+- **AppSync**: 250K operations/month free
+- **DynamoDB**: 25GB storage free
+- **Lambda**: 1M requests/month free
+- **Cognito**: 50K MAUs free
+
+Real-time subscriptions are optimized to minimize connection time and data transfer.
+
+## Security
+
+- GitHub OAuth tokens are securely stored
+- All API routes require authentication
+- Data access controlled by Amplify authorization rules
+- Sensitive operations handled server-side
+
+## Development Tips
+
+1. **Amplify Outputs**: Run `npx ampx generate outputs` to create `amplify_outputs.json`
+2. **Local Testing**: Use `npx ampx sandbox` for local backend
+3. **Monitoring**: Check CloudWatch logs for Lambda functions
+4. **GitHub Rate Limits**: Be mindful of GitHub API rate limits (5000/hour for authenticated requests)
+
+## Next Steps
+
+- Add support for multiple GitHub organizations
+- Implement build status webhooks
+- Add team collaboration features
+- Create mobile app with React Native
+- Add notification preferences
+- Implement data export functionality
+
+## License
+
+MIT
