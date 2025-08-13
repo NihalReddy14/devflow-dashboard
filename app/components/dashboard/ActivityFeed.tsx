@@ -34,64 +34,28 @@ export function ActivityFeed() {
 
   const checkAuthAndFetch = async () => {
     try {
-      const response = await fetch('/api/auth/status');
+      setLoading(true);
+      // Fetch activities from our GitHub-based API
+      const response = await fetch('/api/activities');
+      
       if (response.ok) {
         const data = await response.json();
-        
-        if (data.authenticated) {
-          // Delay initialization to ensure Amplify is configured
-          setTimeout(() => {
-            try {
-              const dataClient = generateClient<Schema>();
-              setClient(dataClient);
-              fetchActivities(dataClient);
-            } catch (e) {
-              console.log('Amplify not configured yet');
-              setLoading(false);
-            }
-          }, 100);
-        } else {
-          // Not authenticated, show empty state
-          setLoading(false);
+        if (data.activities) {
+          setActivities(data.activities);
         }
       } else {
-        setLoading(false);
+        console.error('Failed to fetch activities');
       }
     } catch (error) {
-      console.error('Error checking auth:', error);
+      console.error('Error fetching activities:', error);
+    } finally {
       setLoading(false);
     }
   };
 
   const fetchActivities = async (dataClient: any) => {
-    try {
-      setLoading(true);
-      const response = await dataClient.models.Activity.list({
-        selectionSet: ['id', 'type', 'title', 'description', 'metadata', 'createdAt', 'user.*'],
-        limit: 20,
-        // Sort by most recent first
-      });
-
-      if (response.data) {
-        setActivities(response.data.sort((a: any, b: any) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ));
-      }
-
-      // Subscribe to new activities
-      const subscription = dataClient.models.Activity.onCreate().subscribe({
-        next: (data: any) => {
-          setActivities(prev => [data, ...prev].slice(0, 20)); // Keep last 20
-        },
-        error: (err: any) => console.error('Activity subscription error:', err),
-      });
-
-      return () => subscription.unsubscribe();
-    } catch (err) {
-      console.error('Error fetching activities:', err);
-    } finally {
-      setLoading(false);
-    }
+    // This function is no longer used
+    // Activities are fetched from /api/activities instead
   };
 
   const getActivityIcon = (type: string) => {
@@ -102,6 +66,20 @@ export function ActivityFeed() {
         return <span className="text-red-500">↘</span>;
       case 'pr_merged':
         return <span className="text-purple-500">⇄</span>;
+      case 'pr_reviewed':
+        return <span className="text-blue-500">👁</span>;
+      case 'push':
+        return <span className="text-green-500">⬆</span>;
+      case 'issue_opened':
+        return <span className="text-yellow-500">⚠</span>;
+      case 'issue_closed':
+        return <span className="text-gray-500">✓</span>;
+      case 'branch_created':
+        return <span className="text-blue-500">🌿</span>;
+      case 'branch_deleted':
+        return <span className="text-red-500">✂</span>;
+      case 'tag_created':
+        return <span className="text-purple-500">🏷</span>;
       case 'build_started':
         return <span className="text-blue-500">▶</span>;
       case 'build_completed':
@@ -136,16 +114,33 @@ export function ActivityFeed() {
     return (
       <EmptyState
         title="No Activity Yet"
-        message="Activity from your repositories will appear here in real-time."
+        message="Activity from your repositories will appear here. Connect GitHub to see your activity."
+        action={
+          <button
+            onClick={checkAuthAndFetch}
+            className="text-sm text-blue-600 hover:text-blue-500"
+          >
+            Refresh
+          </button>
+        }
       />
     );
   }
 
   return (
     <Card>
+      <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-medium">Recent Activity</h3>
+        <button
+          onClick={checkAuthAndFetch}
+          className="text-sm text-blue-600 hover:text-blue-500"
+        >
+          Refresh
+        </button>
+      </div>
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {activities.map((activity) => {
-          const metadata = activity.metadata ? JSON.parse(activity.metadata) : {};
+          const metadata = activity.metadata || {};
           
           return (
             <div key={activity.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">

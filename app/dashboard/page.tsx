@@ -9,11 +9,14 @@ import { GitHubAuthButton } from "../components/auth/GitHubAuthButton";
 import { PullRequestList } from "../components/dashboard/PullRequestList";
 import { RealtimeIndicator } from "../components/dashboard/RealtimeIndicator";
 import { ActivityFeed } from "../components/dashboard/ActivityFeed";
+import { ProductivityAnalytics } from "../components/dashboard/ProductivityAnalytics";
 import { useGitHubData } from "../hooks/useGitHubData";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [githubToken, setGithubToken] = useState<string>("");
+  const [githubUser, setGithubUser] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>();
   const { pullRequests, repositories, loading, error, syncWithGitHub } = useGitHubData();
 
@@ -27,6 +30,13 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
+        
+        // Store user data
+        if (data.authenticated && data.user) {
+          setGithubUser(data.user);
+          // Note: We can't access httpOnly cookies from client, 
+          // so we'll need to pass token through API
+        }
         
         // If authenticated, sync GitHub data
         if (data.authenticated) {
@@ -49,6 +59,7 @@ export default function DashboardPage() {
 
   const tabs = [
     { id: "overview", label: "Overview" },
+    { id: "analytics", label: "Analytics" },
     { id: "pulls", label: "Pull Requests" },
     { id: "builds", label: "Builds" },
     { id: "activity", label: "Activity Feed" }
@@ -96,6 +107,17 @@ export default function DashboardPage() {
                 subtitle="Updates in last 24h"
               />
             </div>
+          </div>
+        </TabPanel>
+
+        <TabPanel isActive={activeTab === "analytics"}>
+          <div>
+            <ProductivityAnalytics 
+              owner={githubUser?.username || "NihalReddy14"} 
+              repo="devflow-dashboard"
+              username={githubUser?.username}
+              useServerAPI={isAuthenticated}
+            />
           </div>
         </TabPanel>
 
