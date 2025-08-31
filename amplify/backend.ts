@@ -6,6 +6,7 @@ import { githubAuthCallback } from './functions/github-auth-callback/resource';
 import { syncGithubData } from './functions/sync-github-data/resource';
 import { aiCodeReview } from './functions/ai-code-review/resource';
 import { slackNotifications } from './functions/slack-notifications/resource';
+// Temporarily commenting out wellness analyzer due to module resolution issue
 // import { wellnessAnalyzer } from './functions/wellness-analyzer/resource';
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';
@@ -53,6 +54,7 @@ backend.aiCodeReview.resources.lambda.addToRolePolicy(
 
 // Note: Data access permissions are automatically granted when functions are in the 'data' resource group
 
+// Temporarily commented out wellness analyzer permissions
 // Grant permissions for wellness analyzer function
 // backend.data.resources.tables['DeveloperWellnessMetrics'].grantReadWriteData(backend.wellnessAnalyzer.resources.lambda);
 // backend.data.resources.tables['WellnessInsight'].grantReadWriteData(backend.wellnessAnalyzer.resources.lambda);

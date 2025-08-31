@@ -11,10 +11,12 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import { Amplify } from 'aws-amplify';
 import outputs from '@/amplify_outputs.json';
-import type { Schema } from '@/amplify/data/client-schema';
 
 // Configure Amplify
 Amplify.configure(outputs, { ssr: true });
+
+// Generate client without type parameter for now
+const dataClient = generateClient() as any;
 
 const cognitoClient = new CognitoIdentityProviderClient({
   region: outputs.auth.aws_region,
@@ -24,8 +26,6 @@ const cognitoClient = new CognitoIdentityProviderClient({
     sessionToken: process.env.AWS_SESSION_TOKEN,
   },
 });
-
-const dataClient = generateClient<Schema>();
 
 export async function POST(request: NextRequest) {
   try {

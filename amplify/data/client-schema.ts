@@ -1,7 +1,7 @@
 // This file contains only the type definitions for the client-side
 // It does not import any backend or CDK dependencies
 
-export interface Schema {
+export type Schema = {
   User: {
     type: "model";
     properties: {
