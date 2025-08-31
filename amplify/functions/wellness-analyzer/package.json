@@ -1,0 +1,14 @@
+{
+  "name": "wellness-analyzer",
+  "version": "1.0.0",
+  "description": "Lambda function for analyzing developer wellness metrics",
+  "main": "handler.ts",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.865.0",
+    "@aws-sdk/lib-dynamodb": "^3.865.0",
+    "@aws-sdk/util-dynamodb": "^3.865.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119"
+  }
+}

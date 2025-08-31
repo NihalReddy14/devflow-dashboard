@@ -3,6 +3,8 @@
 import { GitHubAuthButton } from "../components/auth/GitHubAuthButton";
 import { useEffect, useState } from "react";
 import { Avatar } from "../components/ui/Avatar";
+import { useOnboarding } from "../hooks/useOnboarding";
+import OnboardingWizard from "../components/onboarding/OnboardingWizard";
 
 interface GitHubUser {
   id: number;
@@ -18,6 +20,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [githubUser, setGitHubUser] = useState<GitHubUser | null>(null);
+  const { showOnboarding, loading: onboardingLoading, completeOnboarding } = useOnboarding();
 
   useEffect(() => {
     // Check for GitHub user in cookies
@@ -36,6 +39,12 @@ export default function DashboardLayout({
     };
     checkAuth();
   }, []);
+
+  // Show onboarding if needed
+  if (!onboardingLoading && showOnboarding) {
+    return <OnboardingWizard onComplete={completeOnboarding} />;
+  }
+
   return (
     <>
       <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
