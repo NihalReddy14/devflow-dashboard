@@ -7,5 +7,6 @@ export const syncGithubData = defineFunction({
   memoryMB: 512,
   environment: {
     // Environment variables will be auto-populated by Amplify
-  }
+  },
+  resourceGroupName: 'data'
 });

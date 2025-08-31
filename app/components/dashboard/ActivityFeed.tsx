@@ -6,8 +6,7 @@ import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import { Spinner } from "../ui/Spinner";
 import { EmptyState } from "./EmptyState";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "@/amplify/data/resource";
+import { useAppMode } from "../../providers/AmplifyProvider";
 
 interface ActivityItem {
   id: string;

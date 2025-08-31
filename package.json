@@ -3,25 +3,38 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.865.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.865.0",
+    "@aws-sdk/client-dynamodb": "^3.865.0",
+    "@aws-sdk/client-lambda": "^3.865.0",
+    "@aws-sdk/lib-dynamodb": "^3.865.0",
+    "@aws-sdk/util-dynamodb": "^3.865.0",
+    "@radix-ui/react-progress": "^1.0.3",
+    "@types/react-joyride": "^2.0.2",
     "aws-amplify": "^6.15.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "lucide-react": "^0.469.0",
     "next": "15.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "recharts": "^3.1.2"
+    "react-joyride": "^2.9.3",
+    "recharts": "^3.1.2",
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.16.1",
     "@aws-amplify/backend-cli": "^1.8.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/aws-lambda": "^8.10.119",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -30,6 +43,7 @@
     "esbuild": "^0.25.8",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
+    "ignore-loader": "^0.1.2",
     "tailwindcss": "^4",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"

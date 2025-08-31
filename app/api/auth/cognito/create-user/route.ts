@@ -11,7 +11,7 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import { Amplify } from 'aws-amplify';
 import outputs from '@/amplify_outputs.json';
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 
 // Configure Amplify
 Amplify.configure(outputs, { ssr: true });
