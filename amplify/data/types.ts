@@ -1,9 +1,9 @@
-import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { auth } from '../auth/resource';
-import { syncGithubData } from '../functions/sync-github-data/resource';
-import { aiCodeReview } from '../functions/ai-code-review/resource';
-// import { wellnessAnalyzer } from '../functions/wellness-analyzer/resource';
+// This file exports only the types from the schema, without any CDK dependencies
+// Use this file for frontend imports to avoid CDK build errors
 
+import { type ClientSchema, a } from '@aws-amplify/backend';
+
+// Re-export the schema definition without the backend dependencies
 const schema = a.schema({
   User: a
     .model({
@@ -377,7 +377,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function(syncGithubData)),
+    .handler(a.handler.function('syncGithubData')),
 
   performAICodeReview: a
     .mutation()
@@ -392,27 +392,7 @@ const schema = a.schema({
     })
     .returns(a.json())
     .authorization((allow) => [allow.authenticated()])
-    .handler(a.handler.function(aiCodeReview)),
-
-  // calculateWellnessMetrics: a
-  //   .mutation()
-  //   .arguments({
-  //     userId: a.string().required(),
-  //     date: a.date().required(),
-  //   })
-  //   .returns(a.json())
-  //   .authorization((allow) => [allow.authenticated()])
-  //   .handler(a.handler.function(wellnessAnalyzer)),
+    .handler(a.handler.function('aiCodeReview')),
 });
 
 export type Schema = ClientSchema<typeof schema>;
-
-export const data = defineData({
-  schema,
-  authorizationModes: {
-    defaultAuthorizationMode: 'userPool',
-    apiKeyAuthorizationMode: {
-      expiresInDays: 30,
-    },
-  },
-});

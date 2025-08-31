@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/Card';
 import { Progress } from '@/components/ui/progress';
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Clock, Coffee, Moon, Sun, Calendar } from 'lucide-react';
 

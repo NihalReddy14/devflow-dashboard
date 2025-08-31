@@ -38,34 +38,39 @@ export function useTeamData() {
 
       // Only try to use Amplify client if it's available
       const { generateClient } = await import("aws-amplify/data");
-      const { Schema } = await import("../../amplify/data/resource");
-      const client = generateClient<typeof Schema>();
+      const { Schema } = await import("../../amplify/data/client-schema");
+      
+      try {
+        const client = generateClient<typeof Schema>();
 
-      const defaultTeamId = "team_default";
-      
-      // Try to get existing team
-      const { data: existingTeam } = await client.models.Team.get({ id: defaultTeamId });
-      
-      if (existingTeam) {
-        setTeamId(existingTeam.id);
-        setTeamData(existingTeam);
-      } else {
-        // Create a default team
-        const { data: newTeam } = await client.models.Team.create({
-          id: defaultTeamId,
-          name: "Default Team",
-          slug: "default-team",
-          description: "Default team for demo purposes",
-          ownerId: "demo-user",
-          monthlyReviewCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+        const defaultTeamId = "team_default";
         
-        if (newTeam) {
-          setTeamId(newTeam.id);
-          setTeamData(newTeam);
+        // Try to get existing team
+        const { data: existingTeam } = await client.models.Team.get({ id: defaultTeamId });
+        
+        if (existingTeam) {
+          setTeamId(existingTeam.id);
+          setTeamData(existingTeam);
+        } else {
+          // Create a default team
+          const { data: newTeam } = await client.models.Team.create({
+            id: defaultTeamId,
+            name: "Default Team",
+            slug: "default-team",
+            description: "Default team for demo purposes",
+            ownerId: "demo-user",
+            monthlyReviewCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          
+          if (newTeam) {
+            setTeamId(newTeam.id);
+            setTeamData(newTeam);
+          }
         }
+      } catch (innerError) {
+        throw innerError;
       }
     } catch (error) {
       console.error("Error fetching/creating team:", error);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../../amplify/data/resource";
+import type { Schema } from "../../../../amplify/data/client-schema";
 import { Amplify } from 'aws-amplify';
 import config from '../../../../amplify_outputs.json';
 

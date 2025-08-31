@@ -1,4 +1,4 @@
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 
 interface ActivityData {
   activities: Schema['Activity']['type'][];

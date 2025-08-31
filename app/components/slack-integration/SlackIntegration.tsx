@@ -1,30 +1,58 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../../amplify/data/resource";
 import { SlackSetup } from "./SlackSetup";
 import { SlackNotificationSettings } from "./SlackNotificationSettings";
 import { SlackTestMessage } from "./SlackTestMessage";
-
-const client = generateClient<Schema>();
+import { useAppMode } from "../../providers/AmplifyProvider";
 
 interface SlackIntegrationProps {
   teamId: string;
   teamName?: string;
 }
 
+// Mock data for demo mode
+const mockSlackIntegration = {
+  id: 'slack_demo',
+  teamId: 'team_demo',
+  workspaceId: 'W1234567890',
+  workspaceName: 'Demo Workspace',
+  channelId: 'C1234567890',
+  channelName: 'devflow-notifications',
+  webhookUrl: 'https://hooks.slack.com/services/demo',
+  accessToken: 'xoxb-demo-token',
+  status: 'active',
+  lastTestAt: new Date().toISOString(),
+  monthlyNotificationCount: 42,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export function SlackIntegration({ teamId, teamName }: SlackIntegrationProps) {
   const [slackIntegration, setSlackIntegration] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const { isAmplifyAvailable, isDemoMode } = useAppMode();
 
   useEffect(() => {
     loadSlackIntegration();
-  }, [teamId]);
+  }, [teamId, isAmplifyAvailable]);
 
   const loadSlackIntegration = async () => {
     try {
+      if (isDemoMode || !isAmplifyAvailable) {
+        // Use mock data in demo mode
+        setTimeout(() => {
+          setSlackIntegration(mockSlackIntegration);
+          setIsLoading(false);
+        }, 500);
+        return;
+      }
+
+      const { generateClient } = await import("aws-amplify/data");
+      const { Schema } = await import("../../../amplify/data/client-schema");
+      const client = generateClient<typeof Schema>();
+      
       const { data } = await client.models.SlackIntegration.list({
         filter: { teamId: { eq: teamId } }
       });
@@ -34,6 +62,8 @@ export function SlackIntegration({ teamId, teamName }: SlackIntegrationProps) {
       }
     } catch (error) {
       console.error("Error loading Slack integration:", error);
+      // In case of error, don't show mock data
+      setSlackIntegration(null);
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +74,17 @@ export function SlackIntegration({ teamId, teamName }: SlackIntegrationProps) {
       return;
     }
 
+    if (isDemoMode || !isAmplifyAvailable) {
+      // Simulate disconnect in demo mode
+      setSlackIntegration(null);
+      return;
+    }
+
     try {
+      const { generateClient } = await import("aws-amplify/data");
+      const { Schema } = await import("../../../amplify/data/client-schema");
+      const client = generateClient<typeof Schema>();
+      
       await client.models.SlackIntegration.update({
         id: slackIntegration.id,
         status: 'inactive'
@@ -99,65 +139,84 @@ export function SlackIntegration({ teamId, teamName }: SlackIntegrationProps) {
               </div>
             </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-            <button
-              onClick={handleDisconnect}
-              className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={handleDisconnect}
+            className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+          >
+            Disconnect
+          </button>
         </div>
+      </div>
 
-        {/* Usage Stats */}
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Monthly Usage
-              </p>
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white">
-                {slackIntegration.monthlyNotificationCount || 0} / 100
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
-                notifications sent
-              </p>
-            </div>
-            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div 
-                className="bg-purple-600 h-2 rounded-full"
-                style={{ width: `${Math.min((slackIntegration.monthlyNotificationCount || 0) / 100 * 100, 100)}%` }}
-              />
-            </div>
+      {/* Test Message Section */}
+      <SlackTestMessage slackIntegration={slackIntegration} />
+
+      {/* Notification Settings */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Notification Settings
+          </h3>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+          >
+            {showSettings ? "Hide" : "Configure"}
+          </button>
+        </div>
+        
+        {showSettings && (
+          <SlackNotificationSettings 
+            slackIntegrationId={slackIntegration.id} 
+            onSave={() => setShowSettings(false)}
+          />
+        )}
+      </div>
+
+      {/* Usage Stats */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Usage Statistics
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {slackIntegration.monthlyNotificationCount || 0}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Notifications this month
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {slackIntegration.lastTestAt ? 
+                new Date(slackIntegration.lastTestAt).toLocaleDateString() : 
+                'Never'
+              }
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Last test message
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              ∞
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Monthly limit
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Settings Panel */}
-      {showSettings && (
-        <SlackNotificationSettings 
-          slackIntegrationId={slackIntegration.id} 
-          onSave={() => setShowSettings(false)}
-        />
+      {/* Demo Mode Notice */}
+      {isDemoMode && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            <strong>Demo Mode:</strong> This is a simulated Slack integration. In production, this would connect to your actual Slack workspace.
+          </p>
+        </div>
       )}
-
-      {/* Test Message */}
-      <SlackTestMessage 
-        slackIntegrationId={slackIntegration.id} 
-        teamName={teamName}
-      />
     </div>
   );
 }

@@ -4,30 +4,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Alert, AlertDescription } from '@/app/components/ui/Alert';
-import type { Schema } from '@/amplify/data/resource';
-import { generateClient } from 'aws-amplify/data';
 import { Lightbulb, CheckCircle, X, ChevronRight, Award, AlertTriangle, Info, Heart } from 'lucide-react';
 import { useState } from 'react';
-
-const client = generateClient<Schema>();
+import { useAppMode } from '../../providers/AmplifyProvider';
 
 interface WellnessTipsProps {
-  insights: Schema['WellnessInsight']['type'][];
-  onDismiss: () => void;
-  showAll?: boolean;
+  insights: any[];
+  detailed?: boolean;
 }
 
-export default function WellnessTips({ insights, onDismiss, showAll = false }: WellnessTipsProps) {
+export default function WellnessTips({ insights, detailed = false }: WellnessTipsProps) {
   const [dismissing, setDismissing] = useState<string | null>(null);
+  const [localInsights, setLocalInsights] = useState(insights);
+  const { isAmplifyAvailable, isDemoMode } = useAppMode();
 
   const handleDismiss = async (insightId: string) => {
+    if (isDemoMode || !isAmplifyAvailable) {
+      // In demo mode, just remove from local state
+      setLocalInsights(prev => prev.filter(i => i.id !== insightId));
+      return;
+    }
+
     try {
       setDismissing(insightId);
+      const { generateClient } = await import('aws-amplify/data');
+      const { Schema } = await import('../../../amplify/data/client-schema');
+      const client = generateClient<typeof Schema>();
+      
       await client.models.WellnessInsight.update({
         id: insightId,
         isDismissed: true
       });
-      onDismiss();
+      setLocalInsights(prev => prev.filter(i => i.id !== insightId));
     } catch (error) {
       console.error('Error dismissing insight:', error);
     } finally {
@@ -36,12 +44,26 @@ export default function WellnessTips({ insights, onDismiss, showAll = false }: W
   };
 
   const handleMarkRead = async (insightId: string) => {
+    if (isDemoMode || !isAmplifyAvailable) {
+      // In demo mode, just update local state
+      setLocalInsights(prev => prev.map(i => 
+        i.id === insightId ? { ...i, isRead: true } : i
+      ));
+      return;
+    }
+
     try {
+      const { generateClient } = await import('aws-amplify/data');
+      const { Schema } = await import('../../../amplify/data/client-schema');
+      const client = generateClient<typeof Schema>();
+      
       await client.models.WellnessInsight.update({
         id: insightId,
         isRead: true
       });
-      onDismiss();
+      setLocalInsights(prev => prev.map(i => 
+        i.id === insightId ? { ...i, isRead: true } : i
+      ));
     } catch (error) {
       console.error('Error marking insight as read:', error);
     }
@@ -61,9 +83,9 @@ export default function WellnessTips({ insights, onDismiss, showAll = false }: W
     return 'default';
   };
 
-  const displayedInsights = showAll ? insights : insights.slice(0, 3);
+  const displayedInsights = detailed ? localInsights : localInsights.slice(0, 3);
 
-  if (insights.length === 0) {
+  if (localInsights.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -90,7 +112,7 @@ export default function WellnessTips({ insights, onDismiss, showAll = false }: W
 
   return (
     <div className="space-y-4">
-      {!showAll && (
+      {!detailed && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -110,30 +132,24 @@ export default function WellnessTips({ insights, onDismiss, showAll = false }: W
                     <Icon className="h-4 w-4" />
                     <AlertDescription className="flex items-start justify-between">
                       <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{insight.title}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {insight.category}
-                          </Badge>
+                        <div>
+                          <p className="font-medium">{insight.title}</p>
+                          <p className="text-sm mt-1">{insight.message}</p>
                         </div>
-                        <p className="text-sm">{insight.message}</p>
                         {insight.actionItems && insight.actionItems.length > 0 && (
-                          <ul className="text-sm space-y-1 mt-2">
-                            {insight.actionItems.map((action, index) => (
-                              <li key={index} className="flex items-start gap-2">
-                                <ChevronRight className="h-3 w-3 mt-0.5" />
-                                <span>{action}</span>
-                              </li>
+                          <ul className="text-sm list-disc list-inside space-y-1">
+                            {insight.actionItems.map((item: string, index: number) => (
+                              <li key={index}>{item}</li>
                             ))}
                           </ul>
                         )}
                       </div>
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 ml-2"
+                        size="sm"
                         onClick={() => handleDismiss(insight.id)}
                         disabled={dismissing === insight.id}
+                        className="ml-4"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -141,119 +157,75 @@ export default function WellnessTips({ insights, onDismiss, showAll = false }: W
                   </Alert>
                 );
               })}
+              {insights.length > 3 && !detailed && (
+                <Button variant="outline" className="w-full" size="sm">
+                  View All {insights.length} Insights
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
             </div>
-            {insights.length > 3 && !showAll && (
-              <Button variant="link" className="mt-4 w-full">
-                View all {insights.length} insights
-              </Button>
-            )}
           </CardContent>
         </Card>
       )}
 
-      {showAll && (
+      {detailed && (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold">All Wellness Insights</h2>
-              <p className="text-muted-foreground">
-                {insights.length} active {insights.length === 1 ? 'insight' : 'insights'}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            {/* Group insights by category */}
-            {Object.entries(
-              insights.reduce((acc, insight) => {
-                if (!acc[insight.category]) {
-                  acc[insight.category] = [];
-                }
-                acc[insight.category].push(insight);
-                return acc;
-              }, {} as Record<string, typeof insights>)
-            ).map(([category, categoryInsights]) => (
-              <Card key={category}>
-                <CardHeader>
-                  <CardTitle className="capitalize">{category} Insights</CardTitle>
-                  <CardDescription>
-                    {categoryInsights.length} {categoryInsights.length === 1 ? 'tip' : 'tips'} for {category}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {categoryInsights.map((insight) => {
-                    const Icon = getIcon(insight.type, insight.category);
-                    return (
-                      <div
-                        key={insight.id}
-                        className={`p-4 rounded-lg border ${
-                          !insight.isRead ? 'bg-secondary/50' : ''
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <Icon className={`h-5 w-5 mt-0.5 ${
-                              insight.type === 'warning' ? 'text-yellow-500' :
-                              insight.type === 'achievement' ? 'text-green-500' :
-                              'text-blue-500'
-                            }`} />
-                            <div className="space-y-2 flex-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-semibold">{insight.title}</h4>
-                                {!insight.isRead && (
-                                  <Badge variant="default" className="text-xs">New</Badge>
-                                )}
-                                {insight.severity && (
-                                  <Badge 
-                                    variant={insight.severity === 'critical' ? 'destructive' : 'secondary'}
-                                    className="text-xs"
-                                  >
-                                    {insight.severity}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">{insight.message}</p>
-                              {insight.actionItems && insight.actionItems.length > 0 && (
-                                <div className="mt-3">
-                                  <p className="text-xs font-semibold mb-2">Action Items:</p>
-                                  <ul className="text-sm space-y-1">
-                                    {insight.actionItems.map((action, index) => (
-                                      <li key={index} className="flex items-start gap-2">
-                                        <CheckCircle className="h-3 w-3 mt-0.5 text-green-500" />
-                                        <span>{action}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 mt-3">
-                                {!insight.isRead && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleMarkRead(insight.id)}
-                                  >
-                                    Mark as Read
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDismiss(insight.id)}
-                                  disabled={dismissing === insight.id}
-                                >
-                                  Dismiss
-                                </Button>
-                              </div>
-                            </div>
+          <h2 className="text-2xl font-bold">All Wellness Insights</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {displayedInsights.map((insight) => {
+              const Icon = getIcon(insight.type, insight.category);
+              return (
+                <Card key={insight.id} className={insight.isRead ? 'opacity-60' : ''}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon className="h-5 w-5" />
+                        <div>
+                          <CardTitle className="text-base">{insight.title}</CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={getVariant(insight.type, insight.severity) as any}>
+                              {insight.type}
+                            </Badge>
+                            <Badge variant="outline">{insight.category}</Badge>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDismiss(insight.id)}
+                        disabled={dismissing === insight.id}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm mb-3">{insight.message}</p>
+                    {insight.actionItems && insight.actionItems.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Recommended Actions:</p>
+                        <ul className="text-sm list-disc list-inside space-y-1">
+                          {insight.actionItems.map((item: string, index: number) => (
+                            <li key={index}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {!insight.isRead && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4"
+                        onClick={() => handleMarkRead(insight.id)}
+                      >
+                        Mark as Read
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </>
       )}

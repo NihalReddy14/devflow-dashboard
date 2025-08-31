@@ -59,6 +59,7 @@ export default function AmplifyProvider({
 }) {
   const [isAmplifyAvailable, setIsAmplifyAvailable] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Try to load real Amplify outputs, fallback to mock mode
@@ -86,11 +87,18 @@ export default function AmplifyProvider({
         setIsAmplifyAvailable(false);
         setIsDemoMode(true);
         console.log('Running in demo mode with mock data');
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initializeAmplify();
   }, []);
+  
+  // Don't render children until Amplify is configured
+  if (isLoading) {
+    return null;
+  }
   
   return (
     <AppModeContext.Provider value={{ isAmplifyAvailable, isDemoMode }}>

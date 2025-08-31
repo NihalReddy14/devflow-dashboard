@@ -1,11 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '@/amplify/data/resource';
-
-// This will be initialized when Amplify is configured
-let client: any;
+import { useAppMode } from '../providers/AmplifyProvider';
 
 export interface PullRequestWithRepo {
   id: string;

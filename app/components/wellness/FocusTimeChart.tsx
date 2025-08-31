@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Brain, TrendingUp, TrendingDown, Target } from 'lucide-react';
 

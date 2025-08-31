@@ -4,7 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/app/components/ui/Alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/Card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/app/components/ui/Badge';
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 import { AlertTriangle, CheckCircle, Info, XCircle, Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState } from 'react';
 

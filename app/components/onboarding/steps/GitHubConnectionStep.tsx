@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '@/amplify/data/resource';
+import type { Schema } from '@/amplify/data/client-schema';
 import { getCurrentUser } from 'aws-amplify/auth';
 
 const client = generateClient<Schema>();

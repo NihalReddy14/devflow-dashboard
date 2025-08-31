@@ -40,7 +40,7 @@ backend.githubAuthCallback.resources.lambda.addToRolePolicy(
   })
 );
 
-// Grant the AI code review function permissions for Bedrock and data access
+// Grant the AI code review function permissions for Bedrock
 backend.aiCodeReview.resources.lambda.addToRolePolicy(
   new PolicyStatement({
     actions: [
@@ -51,45 +51,7 @@ backend.aiCodeReview.resources.lambda.addToRolePolicy(
   })
 );
 
-// Grant data access permissions
-backend.data.resources.graphqlApi.grantMutation(backend.aiCodeReview.resources.lambda);
-const teamTable = backend.data.resources.tables['Team'];
-const aiCodeReviewTable = backend.data.resources.tables['AICodeReview'];
-teamTable.grantReadWriteData(backend.aiCodeReview.resources.lambda);
-aiCodeReviewTable.grantReadWriteData(backend.aiCodeReview.resources.lambda);
-
-// Set environment variables for AI code review
-const aiCodeReviewLambda = backend.aiCodeReview.resources.lambda as any;
-if (aiCodeReviewLambda.addEnvironment) {
-  aiCodeReviewLambda.addEnvironment(
-    'AMPLIFY_DATA_TEAM_TABLE_NAME',
-    teamTable.tableName
-  );
-  aiCodeReviewLambda.addEnvironment(
-    'AMPLIFY_DATA_AICODEREVIEW_TABLE_NAME',
-    aiCodeReviewTable.tableName
-  );
-}
-
-// Grant permissions for Slack notifications function
-backend.data.resources.tables['SlackIntegration'].grantReadWriteData(backend.slackNotifications.resources.lambda);
-backend.data.resources.tables['SlackNotificationSettings'].grantReadData(backend.slackNotifications.resources.lambda);
-backend.data.resources.tables['Team'].grantReadData(backend.slackNotifications.resources.lambda);
-
-// Set environment variables for Slack notifications
-const slackIntegrationTable = backend.data.resources.tables['SlackIntegration'];
-const slackNotificationSettingsTable = backend.data.resources.tables['SlackNotificationSettings'];
-const slackNotificationsLambda = backend.slackNotifications.resources.lambda as any;
-if (slackNotificationsLambda.addEnvironment) {
-  slackNotificationsLambda.addEnvironment(
-    'SLACK_INTEGRATION_TABLE_NAME',
-    slackIntegrationTable.tableName
-  );
-  slackNotificationsLambda.addEnvironment(
-    'SLACK_NOTIFICATION_SETTINGS_TABLE_NAME',
-    slackNotificationSettingsTable.tableName
-  );
-}
+// Note: Data access permissions are automatically granted when functions are in the 'data' resource group
 
 // Grant permissions for wellness analyzer function
 // backend.data.resources.tables['DeveloperWellnessMetrics'].grantReadWriteData(backend.wellnessAnalyzer.resources.lambda);
