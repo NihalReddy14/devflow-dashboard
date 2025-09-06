@@ -6,10 +6,14 @@ import { githubAuthCallback } from './functions/github-auth-callback/resource';
 import { syncGithubData } from './functions/sync-github-data/resource';
 import { aiCodeReview } from './functions/ai-code-review/resource';
 import { slackNotifications } from './functions/slack-notifications/resource';
+import { calculateDoraMetrics } from './functions/calculate-dora-metrics/resource';
 // Temporarily commenting out wellness analyzer due to module resolution issue
 // import { wellnessAnalyzer } from './functions/wellness-analyzer/resource';
 import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Stack } from 'aws-cdk-lib';
+import { Rule, Schedule as EventSchedule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { Duration } from 'aws-cdk-lib';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -22,6 +26,7 @@ const backend = defineBackend({
   syncGithubData,
   aiCodeReview,
   slackNotifications,
+  calculateDoraMetrics,
   // wellnessAnalyzer,
 });
 
@@ -79,3 +84,12 @@ backend.aiCodeReview.resources.lambda.addToRolePolicy(
 // For now, we'll use polling or GraphQL subscriptions instead
 
 // Environment variables will be added through the resource definitions
+
+// Create an EventBridge rule to trigger DORA metrics calculation
+const doraMetricsStack = backend.createStack('DoraMetricsSchedule');
+
+new Rule(doraMetricsStack, 'DoraMetricsCalculationRule', {
+  schedule: EventSchedule.rate(Duration.hours(1)), // Run every hour
+  targets: [new LambdaFunction(backend.calculateDoraMetrics.resources.lambda)],
+  description: 'Triggers DORA metrics calculation every hour',
+});

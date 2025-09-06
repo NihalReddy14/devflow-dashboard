@@ -53,6 +53,75 @@ interface GitHubPR {
   assignees: Array<{ login: string }>;
 }
 
+interface GitHubWorkflowRun {
+  id: number;
+  workflow_id: number;
+  name: string;
+  head_branch: string;
+  head_sha: string;
+  status: string;
+  conclusion: string | null;
+  workflow_url: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  run_started_at: string;
+  run_number: number;
+  actor: {
+    login: string;
+    avatar_url: string;
+  };
+  head_commit: {
+    message: string;
+    author: {
+      name: string;
+      email: string;
+    };
+  };
+}
+
+interface GitHubDeployment {
+  id: number;
+  ref: string;
+  sha: string;
+  environment: string | null;
+  description: string | null;
+  creator: {
+    login: string;
+  };
+  created_at: string;
+  updated_at: string;
+  url: string;
+  task: string;
+  payload: any;
+}
+
+interface GitHubDeploymentStatus {
+  state: string;
+  target_url: string | null;
+  description: string | null;
+  created_at: string;
+}
+
+// Helper function to map GitHub deployment status to our status
+function mapDeploymentStatus(githubStatus: string): string {
+  switch (githubStatus) {
+    case 'error':
+    case 'failure':
+      return 'failure';
+    case 'pending':
+      return 'pending';
+    case 'in_progress':
+      return 'in_progress';
+    case 'queued':
+      return 'pending';
+    case 'success':
+      return 'success';
+    default:
+      return 'pending';
+  }
+}
+
 export const handler = async (event: any) => {
   const { userId, githubToken } = event;
 
@@ -184,6 +253,226 @@ export const handler = async (event: any) => {
               }),
               createdAt: pr.created_at,
             });
+          }
+        }
+      }
+
+      // Fetch workflow runs for this repository
+      const workflowRunsResponse = await fetch(
+        `https://api.github.com/repos/${repo.full_name}/actions/runs?per_page=30`,
+        {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      if (workflowRunsResponse.ok) {
+        const { workflow_runs }: { workflow_runs: GitHubWorkflowRun[] } = await workflowRunsResponse.json();
+
+        for (const run of workflow_runs) {
+          // Check if build exists
+          const existingBuilds = await client.models.Build.list({
+            filter: {
+              commitSha: { eq: run.head_sha },
+              repositoryId: { eq: repositoryId }
+            }
+          });
+
+          // Calculate duration if completed
+          let duration: number | undefined;
+          if (run.conclusion && run.created_at && run.updated_at) {
+            const start = new Date(run.created_at).getTime();
+            const end = new Date(run.updated_at).getTime();
+            duration = Math.floor((end - start) / 1000); // duration in seconds
+          }
+
+          const buildData = {
+            repositoryId,
+            commitSha: run.head_sha,
+            branch: run.head_branch,
+            status: run.status,
+            conclusion: run.conclusion || undefined,
+            startedAt: run.run_started_at,
+            completedAt: run.conclusion ? run.updated_at : undefined,
+            duration,
+            url: run.html_url,
+            author: run.actor.login,
+            message: run.head_commit?.message || '',
+            workflowName: run.name,
+            workflowId: run.workflow_id,
+            runNumber: run.run_number,
+            runId: run.id,
+          };
+
+          if (existingBuilds.data.length > 0) {
+            // Update existing build
+            await client.models.Build.update({
+              id: existingBuilds.data[0].id,
+              ...buildData
+            });
+          } else {
+            // Create new build
+            await client.models.Build.create(buildData);
+
+            // Create activity for build events
+            if (run.conclusion === 'failure') {
+              await client.models.Activity.create({
+                userId,
+                repositoryId,
+                type: 'build_failed',
+                title: `Build Failed: ${run.name}`,
+                description: `${run.actor.login}'s build failed on ${run.head_branch}`,
+                metadata: JSON.stringify({
+                  workflowName: run.name,
+                  branch: run.head_branch,
+                  commitSha: run.head_sha,
+                  conclusion: run.conclusion,
+                  url: run.html_url,
+                }),
+                createdAt: run.updated_at,
+              });
+            } else if (run.conclusion === 'success' && run.head_branch === repo.default_branch) {
+              // Only create activity for successful builds on default branch
+              await client.models.Activity.create({
+                userId,
+                repositoryId,
+                type: 'build_success',
+                title: `Build Succeeded: ${run.name}`,
+                description: `${run.actor.login}'s build succeeded on ${run.head_branch}`,
+                metadata: JSON.stringify({
+                  workflowName: run.name,
+                  branch: run.head_branch,
+                  commitSha: run.head_sha,
+                  conclusion: run.conclusion,
+                  url: run.html_url,
+                }),
+                createdAt: run.updated_at,
+              });
+            }
+          }
+        }
+      }
+
+      // Fetch deployment data for production environments
+      const deploymentsResponse = await fetch(
+        `https://api.github.com/repos/${repo.full_name}/deployments?per_page=20&environment=production`,
+        {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      if (deploymentsResponse.ok) {
+        const deployments: GitHubDeployment[] = await deploymentsResponse.json();
+
+        for (const deployment of deployments) {
+          // Fetch deployment status
+          const statusResponse = await fetch(
+            `https://api.github.com/repos/${repo.full_name}/deployments/${deployment.id}/statuses?per_page=1`,
+            {
+              headers: {
+                'Authorization': `Bearer ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          );
+
+          if (statusResponse.ok) {
+            const statuses: GitHubDeploymentStatus[] = await statusResponse.json();
+            const latestStatus = statuses[0];
+
+            if (latestStatus) {
+              // Check if deployment exists
+              const existingDeployments = await client.models.Deployment.list({
+                filter: {
+                  commitSha: { eq: deployment.sha },
+                  environment: { eq: deployment.environment || 'production' },
+                  repositoryId: { eq: repositoryId }
+                }
+              });
+
+              // Calculate duration if completed
+              let duration: number | undefined;
+              if (latestStatus.state === 'success' || latestStatus.state === 'failure') {
+                const start = new Date(deployment.created_at).getTime();
+                const end = new Date(latestStatus.created_at).getTime();
+                duration = Math.floor((end - start) / 1000); // duration in seconds
+              }
+
+              // Find associated build
+              const builds = await client.models.Build.list({
+                filter: {
+                  commitSha: { eq: deployment.sha },
+                  repositoryId: { eq: repositoryId }
+                }
+              });
+
+              const deploymentData = {
+                repositoryId,
+                environment: deployment.environment || 'production',
+                commitSha: deployment.sha,
+                branch: deployment.ref,
+                buildId: builds.data.length > 0 ? builds.data[0].id : undefined,
+                status: mapDeploymentStatus(latestStatus.state),
+                deployedBy: deployment.creator.login,
+                startedAt: deployment.created_at,
+                completedAt: latestStatus.state === 'success' || latestStatus.state === 'failure' ? latestStatus.created_at : undefined,
+                duration,
+                url: latestStatus.target_url || deployment.url,
+                metadata: JSON.stringify({
+                  deploymentId: deployment.id,
+                  description: deployment.description,
+                  task: deployment.task,
+                  payload: deployment.payload,
+                }),
+              };
+
+              if (existingDeployments.data.length > 0) {
+                // Update existing deployment
+                await client.models.Deployment.update({
+                  id: existingDeployments.data[0].id,
+                  ...deploymentData
+                });
+              } else {
+                // Create new deployment
+                await client.models.Deployment.create(deploymentData);
+
+                // Create activity for deployment events
+                if (latestStatus.state === 'failure') {
+                  await client.models.Activity.create({
+                    userId,
+                    repositoryId,
+                    type: 'deployment_failed',
+                    title: `Deployment Failed: ${deployment.environment || 'production'}`,
+                    description: `${deployment.creator.login}'s deployment to ${deployment.environment || 'production'} failed`,
+                    metadata: JSON.stringify({
+                      environment: deployment.environment || 'production',
+                      commitSha: deployment.sha,
+                      url: latestStatus.target_url,
+                    }),
+                    createdAt: latestStatus.created_at,
+                  });
+                } else if (latestStatus.state === 'success') {
+                  await client.models.Activity.create({
+                    userId,
+                    repositoryId,
+                    type: 'deployment_success',
+                    title: `Deployed to ${deployment.environment || 'production'}`,
+                    description: `${deployment.creator.login} successfully deployed to ${deployment.environment || 'production'}`,
+                    metadata: JSON.stringify({
+                      environment: deployment.environment || 'production',
+                      commitSha: deployment.sha,
+                      url: latestStatus.target_url,
+                    }),
+                    createdAt: latestStatus.created_at,
+                  });
+                }
+              }
+            }
           }
         }
       }

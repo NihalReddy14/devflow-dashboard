@@ -46,6 +46,8 @@ const schema = a.schema({
       lastSyncedAt: a.datetime(),
       pullRequests: a.hasMany('PullRequest', 'repositoryId'),
       builds: a.hasMany('Build', 'repositoryId'),
+      deployments: a.hasMany('Deployment', 'repositoryId'),
+      doraMetrics: a.hasMany('DoraMetrics', 'repositoryId'),
       activities: a.hasMany('Activity', 'repositoryId'),
     })
     .authorization((allow) => [
@@ -97,10 +99,78 @@ const schema = a.schema({
       url: a.string(),
       author: a.string(),
       message: a.string(),
+      workflowName: a.string(),
+      workflowId: a.integer(),
+      runNumber: a.integer(),
+      runId: a.integer(),
+      deployments: a.hasMany('Deployment', 'buildId'),
     })
     .authorization((allow) => [
       allow.authenticated(),
       allow.groups(['DEVELOPERS', 'ADMINS']),
+    ])
+    .secondaryIndexes((index) => [
+      index('repositoryId').sortKeys(['startedAt']).name('byRepositoryAndTime'),
+    ]),
+
+  Deployment: a
+    .model({
+      repositoryId: a.id().required(),
+      repository: a.belongsTo('Repository', 'repositoryId'),
+      environment: a.string().required(), // 'production' | 'staging' | 'development'
+      commitSha: a.string().required(),
+      branch: a.string().required(),
+      buildId: a.id(),
+      build: a.belongsTo('Build', 'buildId'),
+      status: a.string().required(), // 'pending' | 'in_progress' | 'success' | 'failure' | 'cancelled'
+      deployedBy: a.string().required(),
+      startedAt: a.datetime().required(),
+      completedAt: a.datetime(),
+      duration: a.integer(),
+      url: a.string(),
+      rollbackFromId: a.id(), // If this is a rollback, reference the failed deployment
+      rollbackFrom: a.belongsTo('Deployment', 'rollbackFromId'),
+      rollbacks: a.hasMany('Deployment', 'rollbackFromId'),
+      metadata: a.json(), // Additional deployment info
+    })
+    .authorization((allow) => [
+      allow.authenticated(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ])
+    .secondaryIndexes((index) => [
+      index('repositoryId').sortKeys(['environment', 'startedAt']).name('byRepoAndEnv'),
+    ]),
+
+  DoraMetrics: a
+    .model({
+      repositoryId: a.id().required(),
+      repository: a.belongsTo('Repository', 'repositoryId'),
+      teamId: a.id(),
+      team: a.belongsTo('Team', 'teamId'),
+      date: a.date().required(),
+      period: a.string().required(), // 'daily' | 'weekly' | 'monthly'
+      // DORA Metrics
+      deploymentFrequency: a.float(), // Deployments per day
+      leadTimeMinutes: a.float(), // Minutes from commit to production
+      changeFailureRate: a.float(), // Percentage of deployments causing failures
+      mttrMinutes: a.float(), // Minutes to restore service after failure
+      // Additional metrics
+      totalDeployments: a.integer(),
+      successfulDeployments: a.integer(),
+      failedDeployments: a.integer(),
+      rollbacks: a.integer(),
+      totalBuilds: a.integer(),
+      failedBuilds: a.integer(),
+      averageBuildDuration: a.float(), // Minutes
+      calculatedAt: a.datetime().required(),
+    })
+    .authorization((allow) => [
+      allow.authenticated(),
+      allow.groups(['DEVELOPERS', 'ADMINS']),
+    ])
+    .secondaryIndexes((index) => [
+      index('repositoryId').sortKeys(['date', 'period']).name('byRepoDatePeriod'),
+      index('teamId').sortKeys(['date', 'period']).name('byTeamDatePeriod'),
     ]),
 
   Activity: a
@@ -135,6 +205,7 @@ const schema = a.schema({
       codeReviews: a.hasMany('AICodeReview', 'teamId'),
       slackIntegration: a.hasOne('SlackIntegration', 'teamId'),
       wellnessInsights: a.hasMany('WellnessInsight', 'teamId'),
+      doraMetrics: a.hasMany('DoraMetrics', 'teamId'),
       monthlyReviewCount: a.integer().default(0),
       reviewCountResetDate: a.datetime(),
       slackWebhookUrl: a.string(),

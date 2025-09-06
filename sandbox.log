@@ -1,0 +1,63 @@
+@aws-sdk/credential-provider-node - defaultProvider::fromEnv WARNING:
+    Multiple credential sources detected: 
+    Both AWS_PROFILE and the pair AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY static credentials are set.
+    This SDK will proceed with the AWS_PROFILE value.
+    
+    However, a future version may change this behavior to prefer the ENV static credentials.
+    Please ensure that your environment only sets either the AWS_PROFILE or the
+    AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY pair.
+
+
+4:46:53 PM ampx sandbox
+4:46:53 PM 
+4:46:53 PM Starts sandbox, watch mode for Amplify backend deployments
+4:46:53 PM 
+4:46:53 PM Commands:
+4:46:53 PM   ampx sandbox delete            Deletes sandbox environment
+4:46:53 PM   ampx sandbox secret <command>  Manage sandbox secrets
+4:46:53 PM   ampx sandbox seed              Seeds sandbox environment
+4:46:53 PM 
+4:46:53 PM Logs streaming
+4:46:53 PM       --stream-function-logs  Whether to stream function execution logs. Default
+4:46:53 PM                               : false. Use --logs-filter in addition to this fla
+4:46:53 PM                               g to stream specific function logs       [boolean]
+4:46:53 PM       --logs-filter           Regex pattern to filter logs from only matched fun
+4:46:53 PM                               ctions. E.g. to stream logs for a function, specif
+4:46:53 PM                               y it's name, and to stream logs from all functions
+4:46:53 PM                                starting with auth specify 'auth' Default: Stream
+4:46:53 PM                                all logs                                  [array]
+4:46:53 PM       --logs-out-file         File to append the streaming logs. The file is cre
+4:46:53 PM                               ated if it does not exist. Default: stdout[string]
+4:46:53 PM 
+4:46:53 PM Options:
+4:46:53 PM       --debug            Print debug logs to the console
+4:46:53 PM                                                       [boolean] [default: false]
+4:46:53 PM       --dir-to-watch     Directory to watch for file changes. All subdirectories
+4:46:53 PM                           and files will be included. Defaults to the amplify di
+4:46:53 PM                          rectory.                                       [string]
+4:46:53 PM       --exclude          An array of paths or glob patterns to ignore. Paths can
+4:46:53 PM                           be relative or absolute and can either be files or dir
+4:46:53 PM                          ectories                                        [array]
+4:46:53 PM       --identifier       An optional identifier to distinguish between different
+4:46:53 PM                           sandboxes. Default is the name of the system user exec
+4:46:53 PM                          uting the process                              [string]
+4:46:53 PM       --outputs-format   amplify_outputs file format
+4:46:53 PM                   [string] [choices: "mjs", "json", "json-mobile", "ts", "dart"]
+4:46:53 PM       --outputs-version  Version of the configuration. Version 0 represents clas
+4:46:53 PM                          sic amplify-cli config file amplify-configuration and 1
+4:46:53 PM                           represents newer config file amplify_outputs
+4:46:53 PM        [string] [choices: "0", "1", "1.1", "1.2", "1.3", "1.4"] [default: "1.4"]
+4:46:53 PM       --outputs-out-dir  A path to directory where amplify_outputs is written. I
+4:46:53 PM                          f not provided defaults to current process working dire
+4:46:53 PM                          ctory.                                         [string]
+4:46:53 PM       --profile          An AWS profile name.                           [string]
+4:46:53 PM       --once             Execute a single sandbox deployment without watching fo
+4:46:53 PM                          r future file changes                         [boolean]
+4:46:53 PM   -h, --help             Show help                                     [boolean]
+4:46:53 PM 
+
+[SSMCredentialsError] UnrecognizedClientException: The security token included in the request is invalid.
+  ∟ Caused by: [UnrecognizedClientException] The security token included in the request is invalid.
+Resolution: Make sure your AWS credentials are set up correctly and have permissions to call SSM:GetParameter
+
+

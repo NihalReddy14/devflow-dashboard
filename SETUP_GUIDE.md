@@ -1,84 +1,160 @@
-# DevFlow Dashboard - Quick Setup Guide
+# DevFlow Dashboard Setup Guide
 
-## Current Status
-✅ Frontend server is running at: http://localhost:3000
-❌ Amplify sandbox needs AWS credentials
+This guide will help you set up the DevFlow Dashboard on a new machine.
 
-## To Complete Setup:
+## Prerequisites
 
-### 1. Configure AWS Credentials
+- Node.js 18+ and npm
+- Git
+- An AWS account (or AWS student account)
+- A GitHub account
+
+## Setup Steps
+
+### 1. Clone the Repository
+
 ```bash
-# Option A: If you have AWS CLI installed
-aws configure
-# Enter your AWS Access Key ID
-# Enter your AWS Secret Access Key
-# Enter your default region (e.g., us-east-1)
-# Enter output format (json)
-
-# Option B: Set environment variables
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_access_key
-export AWS_REGION=us-east-1
+git clone <repository-url>
+cd "DevFlow Dashboard"
 ```
 
-### 2. Create GitHub OAuth App
-1. Go to: https://github.com/settings/applications/new
-2. Fill in:
-   - Application name: DevFlow Dashboard
-   - Homepage URL: http://localhost:3000
-   - Authorization callback URL: http://localhost:3000/api/auth/github/callback
-3. Click "Register application"
-4. Copy the Client ID and generate a Client Secret
+### 2. Install Dependencies
 
-### 3. Set Environment Variables
 ```bash
-# Copy the example file
-cp .env.local.example .env.local
+npm install
+```
 
-# Edit .env.local and add:
-NEXT_PUBLIC_GITHUB_CLIENT_ID=your_github_client_id
+### 3. Configure Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# GitHub OAuth Configuration
+# Create a GitHub OAuth App at https://github.com/settings/applications/new
+# - Application name: DevFlow Dashboard
+# - Homepage URL: http://localhost:3000
+# - Authorization callback URL: http://localhost:3000/api/auth/github/callback
+GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# NextAuth Configuration
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=generate_a_secret_key_here
+
+# AWS Credentials (for Amplify backend)
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_REGION=us-east-1
+
+# Slack Integration (Optional)
+# Create a Slack App at https://api.slack.com/apps
+# SLACK_CLIENT_ID=your_slack_client_id
+# SLACK_CLIENT_SECRET=your_slack_client_secret
+# SLACK_REDIRECT_URI=http://localhost:3000/api/slack/callback
 ```
 
-### 4. Restart Amplify Sandbox
-```bash
-# Stop any running processes
-npx ampx sandbox delete
+### 4. Generate NextAuth Secret
 
-# Start fresh
+Generate a secure secret for NextAuth:
+
+```bash
+openssl rand -base64 32
+```
+
+Copy the output and use it as your `NEXTAUTH_SECRET`.
+
+### 5. Set Up GitHub OAuth
+
+1. Go to https://github.com/settings/applications/new
+2. Fill in:
+   - **Application name**: DevFlow Dashboard
+   - **Homepage URL**: http://localhost:3000
+   - **Authorization callback URL**: http://localhost:3000/api/auth/github/callback
+3. Click "Register application"
+4. Copy the **Client ID**
+5. Generate a new **Client Secret** and copy it
+6. Add both to your `.env.local` file
+
+### 6. Set Up AWS Amplify Backend
+
+#### Option A: Use Existing AWS Backend
+If you have AWS credentials with an existing Amplify deployment:
+
+```bash
+# Pull the existing backend configuration
+npx ampx generate outputs --app-id <your-amplify-app-id> --branch main
+```
+
+#### Option B: Deploy New AWS Backend
+If you need to deploy a new backend:
+
+```bash
+# Configure AWS credentials
+aws configure
+
+# Deploy the backend
 npx ampx sandbox
 
-# In another terminal, set the secrets
-npx ampx sandbox secret set GITHUB_CLIENT_ID your_github_client_id
-npx ampx sandbox secret set GITHUB_CLIENT_SECRET your_github_client_secret
+# For production deployment
+npx ampx pipeline-deploy --branch main --app-id <your-app-id>
 ```
 
-### 5. Access the App
-Open http://localhost:3000 in your browser
+#### Option C: Run in Demo Mode
+The app can run without AWS backend in demo mode with limited functionality.
 
-## Running Processes
-- Frontend: http://localhost:3000 (Already running)
-- Amplify Sandbox: Needs AWS credentials to start
+### 7. Run the Development Server
 
-## Troubleshooting
+```bash
+npm run dev
+```
 
-### AWS Credentials Error
-If you see "The security token included in the request is invalid":
-1. Make sure you have an AWS account
-2. Create IAM user with AdministratorAccess (for development)
-3. Generate access keys for the IAM user
-4. Configure credentials as shown above
+The application will be available at http://localhost:3000
 
-### Free Tier Note
-This app is designed to stay within AWS Free Tier limits:
-- DynamoDB: 25GB storage free
-- Lambda: 1M requests/month free
-- AppSync: 250K operations/month free
+### 8. (Optional) Set Up Slack Integration
 
-## Next Steps
-Once both servers are running:
-1. Click "Connect GitHub" in the dashboard
-2. Authorize the OAuth app
-3. Your repositories and PRs will sync automatically
-4. Real-time updates will show in the activity feed
+1. Go to https://api.slack.com/apps
+2. Click "Create New App" → "From scratch"
+3. Name it "DevFlow Dashboard" and select your workspace
+4. In **OAuth & Permissions**, add these scopes:
+   - `incoming-webhook`
+   - `channels:read`
+   - `chat:write`
+   - `chat:write.public`
+5. Add Redirect URL: `http://localhost:3000/api/slack/callback`
+6. Copy the Client ID and Client Secret to `.env.local`
+
+## Common Issues
+
+### "Amplify has not been configured" Error
+- Ensure `amplify_outputs.json` exists in the root directory
+- Check that AWS credentials are correctly set in `.env.local`
+- Try running `npx ampx sandbox` to generate the configuration
+
+### GitHub Authentication Issues
+- Verify the callback URL matches exactly: `http://localhost:3000/api/auth/github/callback`
+- Ensure both Client ID and Secret are correctly copied
+- Check that the GitHub OAuth app is not in suspended state
+
+### Port Already in Use
+If port 3000 is busy, the app will automatically use 3001. Update your GitHub OAuth callback URL accordingly.
+
+## Production Deployment
+
+For production deployment on AWS Amplify:
+
+1. Push your code to GitHub
+2. Connect your GitHub repository to AWS Amplify Console
+3. Set environment variables in Amplify Console
+4. Deploy the application
+
+## Demo Mode
+
+The application includes a demo mode that works without AWS backend:
+- Mock data for repositories and pull requests
+- Simulated real-time updates
+- Limited functionality (no data persistence)
+
+This is useful for:
+- Testing UI/UX without AWS costs
+- Demo presentations
+- Local development without backend

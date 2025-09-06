@@ -15,6 +15,11 @@ import { CodeReviewPanel } from "../components/code-review/CodeReviewPanel";
 import { useTeamData } from "../hooks/useTeamData";
 import { SlackIntegration } from "../components/slack-integration/SlackIntegration";
 import WellnessDashboard from "../components/wellness/WellnessDashboard";
+import DoraMetricsOverview from "../components/devops/DoraMetricsOverview";
+import PipelineHealth from "../components/devops/PipelineHealth";
+import BuildHistory from "../components/devops/BuildHistory";
+import DeploymentCalendar from "../components/devops/DeploymentCalendar";
+import { useDevOpsData } from "../hooks/useDevOpsData";
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -25,6 +30,7 @@ export default function DashboardPage() {
   const [hasSlackIntegration, setHasSlackIntegration] = useState(false);
   const { pullRequests, repositories, loading, error, syncWithGitHub } = useGitHubData();
   const { teamId, teamData } = useTeamData();
+  const { stats: devOpsStats, loading: devOpsLoading } = useDevOpsData();
 
   useEffect(() => {
     checkAuth();
@@ -69,7 +75,7 @@ export default function DashboardPage() {
     { id: "analytics", label: "Analytics" },
     { id: "wellness", label: "Wellness 💚" },
     { id: "pulls", label: "Pull Requests" },
-    { id: "builds", label: "Builds" },
+    { id: "builds", label: "DevOps 🚀" },
     { id: "activity", label: "Activity Feed" },
     { id: "integrations", label: "Integrations 🔗" }
   ];
@@ -116,6 +122,32 @@ export default function DashboardPage() {
                 subtitle="Updates in last 24h"
               />
             </div>
+
+            {/* DevOps Metrics Row */}
+            {devOpsStats && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                <MetricCard
+                  title="Build Success Rate"
+                  value={`${devOpsStats.totalBuilds > 0 ? Math.round((devOpsStats.successfulBuilds / devOpsStats.totalBuilds) * 100) : 0}%`}
+                  subtitle={`${devOpsStats.totalBuilds} total builds`}
+                />
+                <MetricCard
+                  title="Avg Build Time"
+                  value={`${Math.round(devOpsStats.averageBuildDuration / 60)}m`}
+                  subtitle="Build duration"
+                />
+                <MetricCard
+                  title="Deployments"
+                  value={devOpsStats.totalDeployments}
+                  subtitle={`${devOpsStats.successfulDeployments} successful`}
+                />
+                <MetricCard
+                  title="Last Deployment"
+                  value={devOpsStats.lastDeployment ? devOpsStats.lastDeployment.environment : "None"}
+                  subtitle={devOpsStats.lastDeployment ? new Date(devOpsStats.lastDeployment.startedAt).toLocaleDateString() : "No deployments"}
+                />
+              </div>
+            )}
 
             {/* Quick Actions Section */}
             <div className="mt-8">
@@ -222,17 +254,57 @@ export default function DashboardPage() {
         </TabPanel>
 
         <TabPanel isActive={activeTab === "builds"}>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Build History</h2>
-            <EmptyState
-              title="No Builds Yet"
-              message="No build history available. Builds will appear here once CI/CD is connected."
-              action={
-                <Button variant="outline">
-                  Setup CI/CD Pipeline
-                </Button>
-              }
-            />
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">DevOps Dashboard</h2>
+              <Button 
+                variant="primary"
+                onClick={syncWithGitHub}
+                disabled={loading}
+              >
+                Sync CI/CD Data
+              </Button>
+            </div>
+
+            {!isAuthenticated ? (
+              <EmptyState
+                title="Authentication Required"
+                message="Please sign in with GitHub to view CI/CD data"
+                action={<GitHubAuthButton />}
+              />
+            ) : devOpsLoading ? (
+              <div className="space-y-6">
+                <div className="animate-pulse">
+                  <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* DORA Metrics Overview */}
+                <section>
+                  <DoraMetricsOverview repositoryId={repositories[0]?.id} />
+                </section>
+
+                {/* Pipeline Health */}
+                <section>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Pipeline Health
+                  </h3>
+                  <PipelineHealth repositoryId={repositories[0]?.id} />
+                </section>
+
+                {/* Build History and Deployment Calendar */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <section>
+                    <BuildHistory repositoryId={repositories[0]?.id} limit={10} />
+                  </section>
+                  
+                  <section>
+                    <DeploymentCalendar repositoryId={repositories[0]?.id} />
+                  </section>
+                </div>
+              </>
+            )}
           </div>
         </TabPanel>
 
